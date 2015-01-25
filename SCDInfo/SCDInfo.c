@@ -204,9 +204,10 @@ static void GetDriveInfo(HWND hwnd, wchar_t drive[4])
 		StringCchPrintf(buf, BUFSIZ,
 			L"File system: %s\r\nDate format: DD/MM/YYYY HH:MM:SS.CC\r\n\r\n", filetype);
 		for (int i = 0; i < numTimes; i++) {
-			StringCchPrintf(line, BUFSIZ, L"%s: %02d/%02d/%04d %02d:%02d:%02d.%02d\r\n",
+			StringCchPrintf(line, BUFSIZ, L"%s: %02d/%02d/%04d %02d:%02d:%02d.%02d UTC%+.1f\r\n",
 				ti[i].description, ti[i].day, ti[i].month, ti[i].year,
-				ti[i].hour, ti[i].minute, ti[i].second, ti[i].microsecond / 10000);
+				ti[i].hour, ti[i].minute, ti[i].second, ti[i].microsecond / 10000,
+				ti[i].offset / 60.0f);
 			StringCchCat(buf, BUFSIZ, line);
 		}
 		SetWindowText(hwndInfo, buf);
