@@ -179,18 +179,17 @@ static void GetDriveInfo(HWND hwnd, wchar_t drive[4])
 			numTimes = 1;
 		}
 	} else if (!wcscmp(L"CDFS", filetype)) {
-		BYTE rawdate[ISO9960_SIZE];
+		BYTE rawdates[ISO9960_SIZE * 4];
 		const wchar_t *descriptors[] = { 
 			L"Date created", L"Date modified", L"Expiration date", L"Use from date"
 		};
 
-		for (int i = 0; i < 4; i++) {
-			ret = GetCDBytes(drive[0], ISO9960_OFFSET + ISO9960_SIZE * i, ISO9960_SIZE, rawdate);
-			if (ret != ERROR_SUCCESS) {
-				break;
+		ret = GetCDBytes(drive[0], ISO9960_OFFSET, ISO9960_SIZE * 4, rawdates);
+		if (ret == ERROR_SUCCESS) {
+			for (int i = 0; i < 4; i++) {
+				ti[i] = ReadISO9960Date(rawdates + i * ISO9960_SIZE, descriptors[i]);
 			}
-			ti[i] = ReadISO9960Date(rawdate, descriptors[i]);
-			numTimes++;
+			numTimes = 4;
 		}
 	} else {
 		StringCchPrintf(buf, BUFSIZ, L"Unsupported file system: %s (UDF and ISO-9660/CDFS only).",
