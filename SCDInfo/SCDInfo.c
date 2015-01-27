@@ -2,8 +2,11 @@
 #include <ntddcdrm.h>
 #include <Commctrl.h>
 #include <strsafe.h>
+#include <process.h>
 
 #include "resource.h"
+
+#define IDM_THREADFINISH   12130
 
 #define UDF_OFFSET ((64 << 10) + 376)
 #define UDF_SIZE 12
@@ -27,6 +30,11 @@ typedef struct TimeInfo {
 	int microsecond;
 	int offset;
 } TimeInfo;
+
+typedef struct WorkerInfo {
+	HWND hwndMain;
+	wchar_t drive[4];
+} WorkerInfo;
 
 /**
  * Converts an ascii representation of a number to the integer representation.
@@ -168,7 +176,6 @@ static void GetDriveInfo(HWND hwnd, wchar_t drive[4])
 	DWORD ret = ERROR_SUCCESS;
 	int numTimes = 0;
 
-	SetWindowText(hwndInfo, L"");
 	if (!GetVolumeInformation(drive, NULL, 0, NULL, NULL, NULL, filetype, MAX_PATH)) {
 		ret = GetLastError();
 	} else if (!wcscmp(L"UDF", filetype)) {
@@ -218,11 +225,32 @@ static void GetDriveInfo(HWND hwnd, wchar_t drive[4])
 	}
 }
 
+/** 
+ * The thread that reads off the CD drive. Used so the UI doesn't freeze up when it takes
+ * a while to read off the CD.
+ */
+unsigned __stdcall WorkerThread(void *arg)
+{
+	WorkerInfo *wi = (WorkerInfo*)arg;
+	EnableWindow(GetDlgItem(wi->hwndMain, IDC_RESCAN), FALSE);
+	EnableWindow(GetDlgItem(wi->hwndMain, IDC_DRIVE), FALSE);
+	SetDlgItemText(wi->hwndMain, IDC_INFO, L"Reading...");
+	GetDriveInfo(wi->hwndMain, wi->drive);
+	EnableWindow(GetDlgItem(wi->hwndMain, IDC_RESCAN), TRUE);
+	EnableWindow(GetDlgItem(wi->hwndMain, IDC_DRIVE), TRUE);
+	PostMessage(wi->hwndMain, WM_COMMAND, MAKELONG(IDM_THREADFINISH, 0), 0);
+
+	return 0;
+}
+
 /**
  * Callback procedure for the main window.
  */
 INT_PTR CALLBACK MainDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	static WorkerInfo wi = { 0 };
+	static uintptr_t thread = 0;
+
 	switch (msg) {
 		case WM_INITDIALOG:
 			//Set dialogue icons
@@ -271,15 +299,21 @@ INT_PTR CALLBACK MainDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				case IDC_DRIVE: { //Get the CD info
 					if (HIWORD(wParam) == CBN_SELCHANGE) {
 						DWORD idx = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-						if (idx != CB_ERR) {
-							wchar_t drive[4] = { 0 };
-							SendMessage((HWND)lParam, CB_GETLBTEXT, idx, (LPARAM)drive);
-							GetDriveInfo(hwnd, drive);
+						if (idx != CB_ERR && !thread) {
+							wi.hwndMain = hwnd;
+							wi.drive[0] = 0;
+							SendMessage((HWND)lParam, CB_GETLBTEXT, idx, (LPARAM)wi.drive);
+							thread = _beginthreadex(NULL, 0, WorkerThread, &wi, 0, NULL);
 						} else {
 							SetDlgItemText(hwnd, IDC_INFO, L"");
 						}
 					}
 				} break;
+
+				case IDM_THREADFINISH: {
+					thread = 0;
+				} break;
+
 				case IDOK: case IDCANCEL:
 					EndDialog(hwnd, LOWORD(wParam));
 				break;
