@@ -1,6 +1,8 @@
 # SCDInfo
 Retrieves the creation/burned date from a CD (ISO9660/CDFS and UDF formats).
 
+![scdinfo](https://cloud.githubusercontent.com/assets/5137410/5890813/fa79d68a-a4a9-11e4-976e-beabdce08457.png)
+
 Usage requirements:
 * None (or more like XP and newer and one or more physical and/or virtual CD drives)
 
