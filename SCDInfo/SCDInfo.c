@@ -36,16 +36,19 @@ typedef struct WorkerInfo {
 	wchar_t drive[4];
 } WorkerInfo;
 
-/**
- * Converts an ascii representation of a number to the integer representation.
- * The length must be 4 bytes or less.
+
+/** 
+ * Converts an ascii representation of a number to its integer (Base 10) representation.
+ * The number must be (a.) positive, and (b.) contain only digits (0-9).
  */
 int ReadASCIIInt(LPBYTE pt, size_t offset, size_t length)
 {
-	char buf[5];
-	memcpy(buf, pt + offset, length > 4 ? 4 : length);
-	buf[length] = 0;
-	return atoi(buf);
+	int ret = 0;
+
+	for (size_t i = 0; i < length; i++) {
+		ret = ret * 10 + pt[offset + i] - '0';
+	}
+	return ret;
 }
 
 /**
@@ -135,7 +138,7 @@ static DWORD GetCDBytes(wchar_t driveletter, DWORD offset, DWORD length, LPBYTE 
 			if (lpSector != NULL) {
 				// Move it to the starting sector for the given offset.
 				if (SetFilePointer(hCD, isector, NULL, FILE_BEGIN) != INVALID_SET_FILE_POINTER) {
-					// Read sectors from the compact disc and write them to a file.
+					// Read sectors from the compact disc and copy them to the output buffer
 					if (ReadFile(hCD, lpSector, dwSize, &dwNotUsed, NULL)) {
 						memcpy(buffer, lpSector + (offset - isector), length);
 					} else {
